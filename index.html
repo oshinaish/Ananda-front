@@ -3,212 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant Cost Tracker</title>
-    <!-- Tailwind CSS for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Link to the Manifest file -->
+    <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
-    <!-- Theme color for the browser address bar -->
     <meta name="theme-color" content="#4A90E2">
-    <!-- **IMPROVEMENT**: Import Image Compression Library -->
-    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
+    
+    <title>Restaurant Cost Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .btn { transition: background-color 0.3s, transform 0.2s; }
-        .btn:active { transform: scale(0.98); }
-        /* **IMPROVEMENT**: Styles for the new Toast Notification */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #4A90E2;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Style for the toast notification */
         #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 2px;
+            padding: 16px;
             position: fixed;
-            top: -100px;
+            z-index: 1;
             left: 50%;
             transform: translateX(-50%);
-            padding: 1rem 1.5rem;
-            border-radius: 0.5rem;
-            color: white;
-            font-weight: 600;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: top 0.5s ease-in-out;
-            z-index: 100;
+            bottom: 30px;
+            opacity: 0;
+            transition: opacity 0.5s, visibility 0.5s;
+        }
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
         }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-    <!-- **IMPROVEMENT**: Toast Notification element -->
-    <div id="toast"></div>
-
-    <div id="app" class="w-full max-w-md mx-auto bg-white rounded-xl shadow-lg p-6 space-y-6 overflow-hidden">
-        <!-- ===== HOME SCREEN ===== -->
-        <div id="home-screen">
-            <header class="text-center">
-                <h1 class="text-2xl font-bold text-gray-800">Restaurant Cost Tracker 🍽️</h1>
-            </header>
-            <main class="space-y-4 mt-6">
-                 <button onclick="showImageSourceDialog('Purchase Invoice')" class="btn w-full bg-blue-500 text-white py-4 px-4 rounded-lg font-semibold text-lg flex items-center justify-center space-x-2 hover:bg-blue-600">
+    <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full text-center">
+        <!-- Main Home Screen -->
+        <div id="homeScreen">
+            <h1 class="text-2xl font-bold mb-2">Restaurant Cost Tracker 🍽️</h1>
+            <p class="text-gray-600 mb-6">Select an image to process</p>
+            
+            <div class="space-y-4">
+                <button onclick="showImageSourceDialog('Purchase Invoice')" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-transform transform hover:scale-105">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     <span>Upload Purchase Invoice</span>
                 </button>
-                <button onclick="showImageSourceDialog('Inventory Out')" class="btn w-full bg-green-500 text-white py-4 px-4 rounded-lg font-semibold text-lg flex items-center justify-center space-x-2 hover:bg-green-600">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                    <span>Upload Inventory Out</span>
-                </button>
-                 <button onclick="showImageSourceDialog('Store Demand')" class="btn w-full bg-yellow-500 text-white py-4 px-4 rounded-lg font-semibold text-lg flex items-center justify-center space-x-2 hover:bg-yellow-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    <span>Upload Store Demand</span>
-                </button>
-            </main>
-        </div>
-
-        <!-- ===== VERIFICATION SCREEN ===== -->
-        <div id="verification-screen" class="hidden">
-             <header class="flex items-center space-x-4">
-                 <button onclick="showHomeScreen()" class="text-gray-500 hover:text-gray-800">&larr; Back</button>
-                <h1 class="text-xl font-bold text-gray-800">Verify & Upload</h1>
-            </header>
-            <main class="mt-4 space-y-4">
-                <img id="image-preview" src="" alt="Selected image" class="rounded-lg max-h-60 w-full object-cover">
-                <p class="text-center text-gray-500 italic">Data will be editable here in a future version.</p>
-                <button id="confirm-btn" onclick="uploadImage()" class="btn w-full bg-green-600 text-white py-4 px-4 rounded-lg font-semibold text-lg flex items-center justify-center space-x-2 hover:bg-green-700">
-                    <span>Confirm & Save</span>
-                </button>
-                <div id="loading-spinner" class="hidden text-center">
-                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                    <p class="mt-2">Compressing & Uploading...</p>
-                </div>
-            </main>
-        </div>
-
-        <!-- **IMPROVEMENT**: Dialog for choosing image source -->
-        <div id="source-dialog" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div class="bg-white rounded-lg p-6 w-11/12 max-w-xs">
-                <h3 class="font-bold text-lg mb-4">Select Source</h3>
-                <div class="space-y-3">
-                    <button onclick="pickImage(false)" class="w-full text-left p-3 hover:bg-gray-100 rounded-md">Take Photo</button>
-                    <button onclick="pickImage(true)" class="w-full text-left p-3 hover:bg-gray-100 rounded-md">Choose from Gallery</button>
-                </div>
-                <button onclick="document.getElementById('source-dialog').classList.add('hidden')" class="w-full text-center mt-4 p-2 text-red-500 font-semibold">Cancel</button>
             </div>
         </div>
+
+        <!-- Verification Screen -->
+        <div id="verificationScreen" class="hidden">
+            <h2 class="text-2xl font-bold mb-4">Review & Correct Text</h2>
+            <img id="previewImage" class="max-w-full mx-auto rounded-lg mb-4 max-h-60">
+            
+            <!-- UPDATED: Editable textarea for corrections -->
+            <div class="mt-4 text-left">
+                <label for="ocrResultTextarea" class="font-bold text-lg mb-2 block">Extracted Text (Editable):</label>
+                <textarea id="ocrResultTextarea" class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 h-48 overflow-y-auto" placeholder="Processing..."></textarea>
+            </div>
+            
+            <div class="mt-6 flex space-x-2">
+                <button onclick="goBack()" class="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-4 rounded-lg">Back</button>
+                <button onclick="saveData()" id="confirmBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg">Confirm & Save</button>
+            </div>
+        </div>
+        
+        <input type="file" id="imageFile" accept="image/*" class="hidden">
+        <input type="file" id="cameraFile" accept="image/*" capture="environment" class="hidden">
+
+        <div id="loadingSpinner" class="hidden fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+            <div class="spinner"></div>
+            <p id="loadingText" class="ml-4 text-lg font-semibold text-gray-700">Processing...</p>
+        </div>
+
+        <!-- Toast notification element -->
+        <div id="toast"></div>
     </div>
 
-    <!-- Hidden file inputs -->
-    <input type="file" id="gallery-picker" accept="image/*" class="hidden">
-    <input type="file" id="camera-picker" accept="image/*" capture="environment" class="hidden">
+<script>
+    const homeScreen = document.getElementById('homeScreen');
+    const verificationScreen = document.getElementById('verificationScreen');
+    const previewImage = document.getElementById('previewImage');
+    const imageFileInput = document.getElementById('imageFile');
+    const cameraFileInput = document.getElementById('cameraFile');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const loadingText = document.getElementById('loadingText');
+    const ocrTextarea = document.getElementById('ocrResultTextarea');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const toast = document.getElementById('toast');
 
-    <script>
-        // --- STATE & ELEMENTS ---
-        let selectedFile = null;
-        const homeScreen = document.getElementById('home-screen');
-        const verificationScreen = document.getElementById('verification-screen');
-        const imagePreview = document.getElementById('image-preview');
-        const galleryPicker = document.getElementById('gallery-picker');
-        const cameraPicker = document.getElementById('camera-picker');
-        const confirmBtn = document.getElementById('confirm-btn');
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const sourceDialog = document.getElementById('source-dialog');
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW registration failed:', err));
+        });
+    }
 
-        // --- NAVIGATION ---
-        function showVerificationScreen() {
-            homeScreen.classList.add('hidden');
-            verificationScreen.classList.remove('hidden');
+    function showToast(message, isError = false) {
+        toast.textContent = message;
+        toast.className = "show";
+        toast.style.backgroundColor = isError ? "#ef4444" : "#333";
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+
+    function showVerificationScreen(file) {
+        previewImage.src = URL.createObjectURL(file);
+        homeScreen.classList.add('hidden');
+        verificationScreen.classList.remove('hidden');
+        ocrTextarea.value = "";
+        ocrTextarea.placeholder = "Extracting text...";
+        ocrTextarea.disabled = true;
+        confirmBtn.disabled = true;
+        extractText(file);
+    }
+
+    function goBack() {
+        verificationScreen.classList.add('hidden');
+        homeScreen.classList.remove('hidden');
+    }
+
+    function showImageSourceDialog() {
+        cameraFileInput.click();
+    }
+    
+    imageFileInput.onchange = (e) => e.target.files && e.target.files[0] && showVerificationScreen(e.target.files[0]);
+    cameraFileInput.onchange = (e) => e.target.files && e.target.files[0] && showVerificationScreen(e.target.files[0]);
+
+    // --- LOGIC UPDATED: Two-step process ---
+
+    // Step 1: Upload image to get OCR text
+    async function extractText(file) {
+        loadingText.textContent = "Extracting Text...";
+        loadingSpinner.classList.remove('hidden');
+        const formData = new FormData();
+        formData.append('image', file);
+        const ocrUrl = 'https://ananda-backend.vercel.app/api/ocr'; // NEW OCR endpoint
+
+        try {
+            const response = await fetch(ocrUrl, { method: 'POST', body: formData });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.details || 'OCR failed');
+
+            ocrTextarea.value = result.extractedText || 'No text found.';
+        } catch (error) {
+            console.error('OCR error:', error);
+            ocrTextarea.placeholder = `Error: ${error.message}`;
+            showToast(`Error extracting text: ${error.message}`, true);
+        } finally {
+            loadingSpinner.classList.add('hidden');
+            ocrTextarea.disabled = false;
+            confirmBtn.disabled = false;
+        }
+    }
+
+    // Step 2: Send corrected text to be saved
+    async function saveData() {
+        const correctedText = ocrTextarea.value;
+        if (!correctedText || correctedText === "Extracting text...") {
+            showToast("No text to save.", true);
+            return;
         }
 
-        function showHomeScreen() {
-            verificationScreen.classList.add('hidden');
-            homeScreen.classList.remove('hidden');
-            selectedFile = null;
-            imagePreview.src = '';
-            galleryPicker.value = null; // Reset file input
-            cameraPicker.value = null;  // Reset file input
-        }
+        loadingText.textContent = "Saving Data...";
+        loadingSpinner.classList.remove('hidden');
+        confirmBtn.disabled = true;
+        const saveUrl = 'https://ananda-backend.vercel.app/api/save'; // NEW Save endpoint
 
-        // --- **IMPROVEMENT**: TOAST NOTIFICATION ---
-        function showToast(message, isError = false) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.style.backgroundColor = isError ? '#ef4444' : '#22c55e';
-            toast.style.top = '20px';
-            setTimeout(() => {
-                toast.style.top = '-100px';
-            }, 3000);
-        }
-
-        // --- **IMPROVEMENT**: IMAGE HANDLING ---
-        function showImageSourceDialog() {
-            sourceDialog.classList.remove('hidden');
-        }
-
-        function pickImage(fromGallery) {
-            sourceDialog.classList.add('hidden');
-            const picker = fromGallery ? galleryPicker : cameraPicker;
-            picker.click();
-        }
-
-        async function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                // **IMPROVEMENT**: Image Compression
-                const options = {
-                    maxSizeMB: 1,          // (max file size in MB)
-                    maxWidthOrHeight: 1920, // (max dimension)
-                    useWebWorker: true
-                }
-                try {
-                    console.log(`Original file size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-                    const compressedFile = await imageCompression(file, options);
-                    console.log(`Compressed file size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
-                    selectedFile = compressedFile;
-                    imagePreview.src = URL.createObjectURL(compressedFile);
-                    showVerificationScreen();
-                } catch (error) {
-                    console.error('Image compression error:', error);
-                    showToast('Failed to compress image.', true);
-                }
-            }
-        }
-        galleryPicker.addEventListener('change', handleFileSelect);
-        cameraPicker.addEventListener('change', handleFileSelect);
-        
-        // --- API CALL ---
-        async function uploadImage() {
-            if (!selectedFile) {
-                showToast('No file selected.', true);
-                return;
-            }
-            
-            // **FIX**: Using your live Vercel URL
-            const vercelUrl = 'https://ananda-backend.vercel.app/api';
-
-            const formData = new FormData();
-            formData.append('image', selectedFile);
-
-            confirmBtn.classList.add('hidden');
-            loadingSpinner.classList.remove('hidden');
-
-            try {
-                const response = await fetch(vercelUrl, { method: 'POST', body: formData });
-                if (response.ok) {
-                    showToast('Success! Data sent to Google Sheet.');
-                    showHomeScreen();
-                } else {
-                    const error = await response.json();
-                    showToast(`Error: ${error.details || 'Upload failed.'}`, true);
-                }
-            } catch (error) {
-                console.error('Upload error:', error);
-                showToast('Upload failed. Check console for details.', true);
-            } finally {
-                confirmBtn.classList.remove('hidden');
-                loadingSpinner.classList.add('hidden');
-            }
-        }
-        
-        // --- SERVICE WORKER REGISTRATION ---
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(reg => console.log('SW registered.'), err => console.error('SW registration failed:', err));
+        try {
+            const response = await fetch(saveUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: correctedText })
             });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.details || 'Save failed');
+            
+            showToast('Success! Data saved to Google Sheet.');
+            goBack();
+
+        } catch (error) {
+            console.error('Save error:', error);
+            showToast(`Save Error: ${error.message}`, true);
+        } finally {
+            loadingSpinner.classList.add('hidden');
+            confirmBtn.disabled = false;
         }
-    </script>
+    }
+</script>
 </body>
 </html>
+
