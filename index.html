@@ -117,6 +117,11 @@
     }
 
     function showVerificationScreen(file) {
+        // **FIX**: Add a check to ensure a valid file was selected.
+        if (!file || file.size === 0) {
+            showToast("No valid file selected. Please try again.", true);
+            return;
+        }
         previewImage.src = URL.createObjectURL(file);
         homeScreen.classList.add('hidden');
         verificationScreen.classList.remove('hidden');
@@ -133,7 +138,8 @@
     }
 
     function showImageSourceDialog() {
-        cameraFileInput.click();
+        // Simplified to prefer gallery for easier testing, but camera still works.
+        imageFileInput.click();
     }
     
     imageFileInput.onchange = (e) => e.target.files && e.target.files[0] && showVerificationScreen(e.target.files[0]);
