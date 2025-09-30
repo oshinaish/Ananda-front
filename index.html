@@ -54,20 +54,32 @@
             <h1 class="text-2xl font-bold mb-2">Restaurant Cost Tracker 🍽️</h1>
             <p class="text-gray-600 mb-6">Select an image to process</p>
             
+            <!-- UPDATED: Four distinct buttons for different sheets -->
             <div class="space-y-4">
-                <button onclick="showImageSourceDialog('Purchase Invoice')" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-transform transform hover:scale-105">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    <span>Upload Purchase Invoice</span>
+                <button onclick="showImageSourceDialog('Upload Store Demand for Sec-23', 'StoreDemand-23')" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-transform transform hover:scale-105">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    <span>Store Demand for Sec-23</span>
+                </button>
+                <button onclick="showImageSourceDialog('Upload Store Demand for Sec-31', 'StoreDemand-31')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-transform transform hover:scale-105">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    <span>Store Demand for Sec-31</span>
+                </button>
+                <button onclick="showImageSourceDialog('Upload Purchase Invoice for Base Kitchen', 'Purchases-Base Kitchen')" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-transform transform hover:scale-105">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <span>Purchase Invoice - Base Kitchen</span>
+                </button>
+                 <button onclick="showImageSourceDialog('Upload Inventory Out- Base Kitchen', 'Inventory-Base Kitchen')" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-transform transform hover:scale-105">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                    <span>Inventory Out - Base Kitchen</span>
                 </button>
             </div>
         </div>
 
         <!-- Verification Screen -->
         <div id="verificationScreen" class="hidden">
-            <h2 class="text-2xl font-bold mb-4">Review & Correct Text</h2>
+            <h2 id="verificationTitle" class="text-2xl font-bold mb-4">Review & Correct Text</h2>
             <img id="previewImage" class="max-w-full mx-auto rounded-lg mb-4 max-h-60">
             
-            <!-- UPDATED: Editable textarea for corrections -->
             <div class="mt-4 text-left">
                 <label for="ocrResultTextarea" class="font-bold text-lg mb-2 block">Extracted Text (Editable):</label>
                 <textarea id="ocrResultTextarea" class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 h-48 overflow-y-auto" placeholder="Processing..."></textarea>
@@ -92,8 +104,12 @@
     </div>
 
 <script>
+    // **NEW**: Global variable to store the target sheet name
+    let currentSheetName = '';
+
     const homeScreen = document.getElementById('homeScreen');
     const verificationScreen = document.getElementById('verificationScreen');
+    const verificationTitle = document.getElementById('verificationTitle');
     const previewImage = document.getElementById('previewImage');
     const imageFileInput = document.getElementById('imageFile');
     const cameraFileInput = document.getElementById('cameraFile');
@@ -116,12 +132,12 @@
         setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
     }
 
-    function showVerificationScreen(file) {
-        // **FIX**: Add a check to ensure a valid file was selected.
+    function showVerificationScreen(file, title) {
         if (!file || file.size === 0) {
             showToast("No valid file selected. Please try again.", true);
             return;
         }
+        verificationTitle.textContent = title;
         previewImage.src = URL.createObjectURL(file);
         homeScreen.classList.add('hidden');
         verificationScreen.classList.remove('hidden');
@@ -135,25 +151,37 @@
     function goBack() {
         verificationScreen.classList.add('hidden');
         homeScreen.classList.remove('hidden');
+        currentSheetName = ''; // Reset sheet name
     }
 
-    function showImageSourceDialog() {
+    // **UPDATED**: Function now accepts title and sheetName
+    function showImageSourceDialog(title, sheetName) {
+        currentSheetName = sheetName; // Store the sheet name globally
         // Simplified to prefer gallery for easier testing, but camera still works.
         imageFileInput.click();
     }
     
-    imageFileInput.onchange = (e) => e.target.files && e.target.files[0] && showVerificationScreen(e.target.files[0]);
-    cameraFileInput.onchange = (e) => e.target.files && e.target.files[0] && showVerificationScreen(e.target.files[0]);
+    // **UPDATED**: Pass the title to the verification screen
+    imageFileInput.onchange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            showVerificationScreen(e.target.files[0], `Review for ${currentSheetName}`);
+        }
+    };
+    cameraFileInput.onchange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            showVerificationScreen(e.target.files[0], `Review for ${currentSheetName}`);
+        }
+    };
 
     // --- LOGIC UPDATED: Two-step process ---
 
-    // Step 1: Upload image to get OCR text
+    // Step 1: Upload image to get OCR text (No change to this function)
     async function extractText(file) {
         loadingText.textContent = "Extracting Text...";
         loadingSpinner.classList.remove('hidden');
         const formData = new FormData();
         formData.append('image', file);
-        const ocrUrl = 'https://ananda-backend.vercel.app/api/ocr'; // NEW OCR endpoint
+        const ocrUrl = 'https://ananda-backend.vercel.app/api/ocr';
 
         try {
             const response = await fetch(ocrUrl, { method: 'POST', body: formData });
@@ -172,29 +200,33 @@
         }
     }
 
-    // Step 2: Send corrected text to be saved
+    // Step 2: Send corrected text and sheet name to be saved
     async function saveData() {
         const correctedText = ocrTextarea.value;
-        if (!correctedText || correctedText === "Extracting text...") {
-            showToast("No text to save.", true);
+        if (!correctedText || correctedText === "Extracting text..." || !currentSheetName) {
+            showToast("No text or sheet selected to save.", true);
             return;
         }
 
         loadingText.textContent = "Saving Data...";
         loadingSpinner.classList.remove('hidden');
         confirmBtn.disabled = true;
-        const saveUrl = 'https://ananda-backend.vercel.app/api/save'; // NEW Save endpoint
+        const saveUrl = 'https://ananda-backend.vercel.app/api/save';
 
         try {
+            // **UPDATED**: Send both the text and the sheet name
             const response = await fetch(saveUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: correctedText })
+                body: JSON.stringify({ 
+                    text: correctedText,
+                    sheetName: currentSheetName 
+                })
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.details || 'Save failed');
             
-            showToast('Success! Data saved to Google Sheet.');
+            showToast(`Success! Data saved to ${currentSheetName}.`);
             goBack();
 
         } catch (error) {
