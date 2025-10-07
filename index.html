@@ -263,7 +263,8 @@
                 }
             };
             
-            const response = await fetchWithRetry(`${apiUrl}?key=${apiKey}`, {
+            // FIX: Removed '?key=${apiKey}' to allow the Canvas environment to handle authentication seamlessly.
+            const response = await fetchWithRetry(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
