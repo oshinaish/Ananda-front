@@ -8,6 +8,7 @@
     
     <title>Restaurant Cost Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .spinner {
@@ -88,6 +89,28 @@
         });
     }
 
+    // --- Core Networking Helper (Added) ---
+    async function fetchWithRetry(url, options, maxRetries = 3) {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const response = await fetch(url, options);
+                if (response.status !== 429) { // 429 is too many requests
+                    return response;
+                }
+                // Implement exponential backoff for 429
+                const delay = Math.pow(2, i) * 1000;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            } catch (error) {
+                // If it's the last attempt, re-throw the error
+                if (i === maxRetries - 1) throw error;
+                // Wait for exponential backoff before the next retry
+                const delay = Math.pow(2, i) * 1000;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        throw new Error("API request failed after multiple retries.");
+    }
+
     function showToast(message, isError = false) {
         toast.textContent = message;
         toast.className = "show";
@@ -142,6 +165,7 @@
         columns[0].forEach(headerText => {
             const th = document.createElement('th');
             th.textContent = headerText;
+            th.className = 'px-6 py-3 text-left text-xs font-bold uppercase tracking-wider';
             headerRow.appendChild(th);
         });
         thead.appendChild(headerRow);
@@ -171,10 +195,11 @@
         const formData = new FormData();
         formData.append('image', file);
         formData.append('sheetName', currentSheetName);
-        const ocrUrl = 'https://ananda-backend.vercel.app/api/ocr';
+        // FIX: Use relative URL for Canvas environment
+        const ocrUrl = '/api/ocr';
 
         try {
-            const response = await fetch(ocrUrl, { method: 'POST', body: formData });
+            const response = await fetchWithRetry(ocrUrl, { method: 'POST', body: formData });
             const result = await response.json();
 
             // **NEW**: Log the raw server response for debugging
@@ -199,6 +224,7 @@
         }
     }
 
+    // --- Core Save Logic (Completed and Corrected) ---
     async function saveData() {
         const rows = tableContainer.querySelectorAll('tbody tr');
         if (rows.length === 0) {
@@ -218,10 +244,11 @@
         loadingText.textContent = "Saving Data...";
         loadingSpinner.classList.remove('hidden');
         confirmBtn.disabled = true;
-        const saveUrl = 'https://ananda-backend.vercel.app/api/save';
+        // FIX: Use relative URL for Canvas environment
+        const saveUrl = '/api/save';
 
         try {
-            const response = await fetch(saveUrl, {
+            const response = await fetchWithRetry(saveUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -246,4 +273,3 @@
 </script>
 </body>
 </html>
-
