@@ -195,19 +195,27 @@
         const formData = new FormData();
         formData.append('image', file);
         formData.append('sheetName', currentSheetName);
-        // FIX: Use relative URL for Canvas environment
         const ocrUrl = '/api/ocr';
 
         try {
             const response = await fetchWithRetry(ocrUrl, { method: 'POST', body: formData });
-            const result = await response.json();
 
-            // **NEW**: Log the raw server response for debugging
+            // CRITICAL FIX: Check if the response is OK (status 200-299)
+            if (!response.ok) {
+                // If it's not OK, read the response as plain text (HTML error message)
+                const errorText = await response.text();
+                // Throw an error with the server's status and the error text
+                throw new Error(`Server Error (${response.status} ${response.statusText}): ${errorText.substring(0, 50)}...`);
+            }
+            
+            // Only attempt to parse as JSON if the response status is OK
+            const result = await response.json();
+            
             console.log("Data received from OCR API:", JSON.stringify(result, null, 2));
 
-            if (!response.ok) throw new Error(result.details || 'OCR request failed');
+            // Note: The previous check "if (!response.ok)" is now handled above.
             
-            // **NEW**: Added a check to ensure the response has the correct structure
+            // Check for correct data structure
             if (!result.columns || !result.rows) {
                 throw new Error("Received invalid data structure from the server.");
             }
@@ -216,6 +224,7 @@
 
         } catch (error) {
             console.error('OCR error:', error);
+            // Display the detailed error message
             tableContainer.innerHTML = `<p class="text-center text-red-500">Error: ${error.message}</p>`;
             showToast(`Error extracting text: ${error.message}`, true);
         } finally {
@@ -256,8 +265,14 @@
                     data: dataToSend
                 })
             });
+            
+            // CRITICAL FIX: Robust check for save endpoint too
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server Error (${response.status} ${response.statusText}): ${errorText.substring(0, 50)}...`);
+            }
+
             const result = await response.json();
-            if (!response.ok) throw new Error(result.details || 'Save failed');
             
             showToast(result.message || `Success! Data saved to ${currentSheetName}.`);
             goBack();
