@@ -8,7 +8,6 @@
     
     <title>Restaurant Cost Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .spinner {
@@ -71,8 +70,6 @@
     </div>
 
 <script>
-    const apiKey = ""; // API Key for Gemini is provided at runtime in the environment
-    const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent';
     let currentSheetName = '';
     const homeScreen = document.getElementById('homeScreen');
     const verificationScreen = document.getElementById('verificationScreen');
@@ -91,40 +88,6 @@
         });
     }
 
-    // --- Utility Functions ---
-
-    // Function to convert File object to Base64 string for the Gemini API
-    function fileToBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = error => reject(error);
-            reader.readAsDataURL(file);
-        });
-    }
-
-    async function fetchWithRetry(url, options, maxRetries = 3) {
-        // Required for reliable network communication, especially with the AI API
-        for (let i = 0; i < maxRetries; i++) {
-            try {
-                const response = await fetch(url, options);
-                // Check if the status is a success (2xx) or a defined error that isn't rate-limiting (429)
-                if (response.ok || response.status !== 429) { 
-                    return response;
-                }
-                // Implement exponential backoff for 429 (rate limiting)
-                const delay = Math.pow(2, i) * 1000;
-                await new Promise(resolve => setTimeout(resolve, delay));
-            } catch (error) {
-                if (i === maxRetries - 1) throw error;
-                // Retry on network errors
-                const delay = Math.pow(2, i) * 1000;
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-        }
-        throw new Error("API request failed after multiple retries.");
-    }
-
     function showToast(message, isError = false) {
         toast.textContent = message;
         toast.className = "show";
@@ -139,17 +102,13 @@
         verificationScreen.classList.remove('hidden');
         tableContainer.innerHTML = '<p class="text-center text-gray-500">Extracting data...</p>';
         confirmBtn.disabled = true;
-        
-        // Use the Gemini Agent function for processing
-        agentOcr(file, currentSheetName);
+        extractText(file);
     }
 
     function goBack() {
         verificationScreen.classList.add('hidden');
         homeScreen.classList.remove('hidden');
         currentSheetName = '';
-        // Clear the file input so the same file can be re-uploaded
-        imageFileInput.value = '';
     }
 
     function showImageSourceDialog(title, sheetName) {
@@ -169,19 +128,20 @@
             tableContainer.innerHTML = '<p class="text-center text-gray-500">No items were found. Please check the image.</p>';
             return;
         }
-        
-        // Use the first element of the columns array for headers
-        const headers = columns.flat();
+        // **NEW**: Added validation for columns
+        if (!columns || !Array.isArray(columns) || columns.length === 0 || !Array.isArray(columns[0])) {
+            tableContainer.innerHTML = '<p class="text-center text-red-500">Error: Invalid column format from server.</p>';
+            return;
+        }
 
         const table = document.createElement('table');
         table.className = 'w-full editable-table';
         
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
-        headers.forEach(headerText => {
+        columns[0].forEach(headerText => {
             const th = document.createElement('th');
             th.textContent = headerText;
-            th.className = 'px-6 py-3 text-left text-xs font-bold uppercase tracking-wider';
             headerRow.appendChild(th);
         });
         thead.appendChild(headerRow);
@@ -194,7 +154,7 @@
                 const td = document.createElement('td');
                 const input = document.createElement('input');
                 input.type = 'text';
-                input.value = cellData || '';
+                input.value = cellData;
                 td.appendChild(input);
                 tr.appendChild(td);
             });
@@ -205,125 +165,40 @@
     }
 
 
-    // --- AGENT FUNCTION: Uses Gemini API for image-to-data extraction (OCR replacement) ---
-    async function agentOcr(file, sheetName) {
-        loadingText.textContent = "Extracting & Parsing with AI...";
+    async function extractText(file) {
+        loadingText.textContent = "Extracting & Parsing...";
         loadingSpinner.classList.remove('hidden');
-        
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('sheetName', currentSheetName);
+        const ocrUrl = 'https://ananda-backend.vercel.app/api/ocr';
+
         try {
-            const base64Data = await fileToBase64(file);
-            const prompt = `You are a data extraction expert. The user has provided an image of a document related to restaurant costs, categorized as '${sheetName}'. Your task is to accurately extract the data into a structured JSON format. 
-            
-            1. Identify the key columns (headers) such as 'Item Name', 'Quantity', 'Unit', and 'Price/Cost'.
-            2. Extract all corresponding rows of data, including any serial numbers.
-            3. Ensure all extracted values, including numbers, are represented as strings.
-            4. Provide the output strictly in the requested JSON schema.
-            
-            Example prompt to yourself: Extract the columns like 'S. no.', 'Item Name', 'Quantity', 'Unit', 'Price' and their corresponding values from the image.`;
-
-            const payload = {
-                contents: [
-                    {
-                        role: "user",
-                        parts: [
-                            { text: prompt },
-                            {
-                                inlineData: {
-                                    mimeType: file.type || "image/jpeg",
-                                    data: base64Data
-                                }
-                            }
-                        ]
-                    }
-                ],
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "OBJECT",
-                        properties: {
-                            "columns": {
-                                "type": "ARRAY",
-                                "description": "The header row of the table, typically an array containing a single array of strings (e.g., [['S. no.', 'Item', 'Quantity', 'Unit']]).",
-                                "items": {
-                                    "type": "ARRAY",
-                                    "items": { "type": "STRING" }
-                                }
-                            },
-                            "rows": {
-                                "type": "ARRAY",
-                                "description": "An array of arrays, where each inner array represents a row of extracted data.",
-                                "items": {
-                                    "type": "ARRAY",
-                                    "items": { "type": "STRING" }
-                                }
-                            }
-                        },
-                        "required": ["columns", "rows"]
-                    }
-                }
-            };
-            
-            // FIX: Removed '?key=${apiKey}' to allow the Canvas environment to handle authentication seamlessly.
-            const response = await fetchWithRetry(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            // Handle non-200 responses if the AI API server returns them
-            if (!response.ok) {
-                 const errorBody = await response.json();
-                 const errorMessage = errorBody.error?.message || `AI API returned status ${response.status}.`;
-                 throw new Error(`AI API Error: ${errorMessage}`);
-            }
-
+            const response = await fetch(ocrUrl, { method: 'POST', body: formData });
             const result = await response.json();
-            
-            const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
-            if (!jsonText) {
-                 throw new Error("AI did not return a valid structured response.");
-            }
-            
-            // The AI provides the JSON as a string, so we must parse it.
-            const parsedResult = JSON.parse(jsonText);
+            // **NEW**: Log the raw server response for debugging
+            console.log("Data received from OCR API:", JSON.stringify(result, null, 2));
 
-            if (!parsedResult.columns || !parsedResult.rows) {
-                throw new Error("Received invalid data structure from the AI.");
+            if (!response.ok) throw new Error(result.details || 'OCR request failed');
+            
+            // **NEW**: Added a check to ensure the response has the correct structure
+            if (!result.columns || !result.rows) {
+                throw new Error("Received invalid data structure from the server.");
             }
 
-            console.log("Data received from OCR API:", JSON.stringify(parsedResult, null, 2));
-            renderEditableTable(parsedResult.columns, parsedResult.rows);
+            renderEditableTable(result.columns, result.rows);
 
         } catch (error) {
-            console.error('OCR Agent error:', error);
-            // Display the detailed error message
-            tableContainer.innerHTML = `<p class="text-center text-red-500">Error: Extraction failed. Please try a clearer image or ensure a valid document type was selected. Details: ${error.message}</p>`;
-            showToast(`Error extracting data: ${error.message}`, true);
+            console.error('OCR error:', error);
+            tableContainer.innerHTML = `<p class="text-center text-red-500">Error: ${error.message}</p>`;
+            showToast(`Error extracting text: ${error.message}`, true);
         } finally {
             loadingSpinner.classList.add('hidden');
             confirmBtn.disabled = false;
         }
     }
 
-
-    // --- AGENT FUNCTION: Simulates the /api/save endpoint ---
-    async function agentSave(sheetName, data) {
-        // This is a simulation for demonstration since we are not connecting to a real sheet.
-        console.log(`Simulating save to sheet: ${sheetName}`);
-        console.log("Data to save:", data);
-
-        // Simulate a network delay
-        await new Promise(resolve => setTimeout(resolve, 1500)); 
-
-        return {
-            message: `Data successfully saved for ${sheetName} with ${data.length} rows.`
-        };
-    }
-    // --- End AGENT Functions ---
-
-
-    // --- Core Save Logic (Uses agentSave) ---
     async function saveData() {
         const rows = tableContainer.querySelectorAll('tbody tr');
         if (rows.length === 0) {
@@ -343,10 +218,19 @@
         loadingText.textContent = "Saving Data...";
         loadingSpinner.classList.remove('hidden');
         confirmBtn.disabled = true;
+        const saveUrl = 'https://ananda-backend.vercel.app/api/save';
 
         try {
-            // CALL THE AGENT FUNCTION DIRECTLY
-            const result = await agentSave(currentSheetName, dataToSend);
+            const response = await fetch(saveUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    sheetName: currentSheetName,
+                    data: dataToSend
+                })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.details || 'Save failed');
             
             showToast(result.message || `Success! Data saved to ${currentSheetName}.`);
             goBack();
